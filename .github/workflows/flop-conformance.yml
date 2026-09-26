@@ -1,16 +1,20 @@
-name: flop-conformance
+name: FLOP Conformance Lab
+
 on:
-  workflow_dispatch:
   pull_request:
     paths:
-      - 'client-conformance/**'
-      - 'tools/build-direct-rail-input.py'
-      - '.github/workflows/flop-conformance.yml'
+      - "client-conformance/**"
+      - ".github/workflows/flop-conformance.yml"
   push:
+    branches: [main]
     paths:
-      - 'client-conformance/**'
-      - 'tools/build-direct-rail-input.py'
-      - '.github/workflows/flop-conformance.yml'
+      - "client-conformance/**"
+      - ".github/workflows/flop-conformance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   direct-rail-f1:
     runs-on: ubuntu-latest
@@ -18,15 +22,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - run: python tools/build-direct-rail-input.py
-      - id: conformance
-        uses: retardio73-boop/flop-conformance-lab@4a06a5cb73a588180c58ecb1868b2c57dc7ab55c
+          python-version: "3.12"
+      - name: Verify repository-native F.1 harness
+        run: python -m unittest -v client-conformance/test_task_id_conformance.py
+      - name: Export existing fixture to portable Lab profile
+        run: |
+          python client-conformance/export_flop_profile.py \
+            --revision "$GITHUB_SHA" \
+            --out .flop/direct-rail-f1.json
+      - name: Verify with independent FLOP Conformance Lab
+        id: flop
+        uses: retardio73-boop/flop-conformance-lab@03735253f6e020048a9aa54a94f9fa69e1a685c7
         with:
           profile: direct-rail-f1
-          input: evidence/flop-direct-rail-f1.json
-          out: conformance-report.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: flop-conformance
-          path: conformance-report.json
+          input: .flop/direct-rail-f1.json
+          out: .flop/conformance-report.json
+          artifact-name: flop-conformance-direct-rail-f1
+      - name: Require portable PASS
+        shell: bash
+        run: test "${{ steps.flop.outputs.result }}" = "PASS"
