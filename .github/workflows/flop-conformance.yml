@@ -2,14 +2,8 @@ name: FLOP Conformance Lab
 
 on:
   pull_request:
-    paths:
-      - "client-conformance/**"
-      - ".github/workflows/flop-conformance.yml"
   push:
     branches: [main]
-    paths:
-      - "client-conformance/**"
-      - ".github/workflows/flop-conformance.yml"
   workflow_dispatch:
 
 permissions:
@@ -30,14 +24,12 @@ jobs:
           python client-conformance/export_flop_profile.py \
             --revision "$GITHUB_SHA" \
             --out .flop/direct-rail-f1.json
-      - name: Verify with independent FLOP Conformance Lab
-        id: flop
+      - id: flop
         uses: retardio73-boop/flop-conformance-lab@03735253f6e020048a9aa54a94f9fa69e1a685c7
         with:
           profile: direct-rail-f1
           input: .flop/direct-rail-f1.json
-          out: .flop/conformance-report.json
-          artifact-name: flop-conformance-direct-rail-f1
-      - name: Require portable PASS
-        shell: bash
+          out: flop-conformance-report.json
+          artifact-name: osr21-direct-rail-f1
+      - name: Require PASS
         run: test "${{ steps.flop.outputs.result }}" = "PASS"
